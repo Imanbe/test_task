@@ -1,0 +1,85 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: test_task_db
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-test_password}
+      POSTGRES_DB: ${DB_NAME:-testing_task_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-testing_task_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: test_task_redis
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-redis_pass}
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_pass}", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: test_task_api
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8088:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: 3
+
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+    container_name: test_task_bot
+    depends_on:
+      - api
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+    env_file:
+      - .env
+    environment:
+      - API_BASE_URL=http://api:8000/v1
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/1
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: 3
+
+volumes:
+  postgres_data:
+  redis_data:
