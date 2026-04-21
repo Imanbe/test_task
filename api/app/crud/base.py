@@ -49,7 +49,8 @@ class BaseRepository(Generic[ModelType]):
         await self.db.delete(db_obj)
         await self.db.flush()
 
-    async def delete_by_id(self, obj_id: int) -> None:
-        query = delete(self.model).where(self.model.id == obj_id)
-        await self.db.execute(query)
-        await self.db.flush()
+    async def delete_by_id(self, obj_id: int) -> int | None:
+        query = delete(self.model).where(self.model.id == obj_id).returning(self.model.id)
+        result = await self.db.execute(query)
+        deleted_id = result.scalar_one_or_none()
+        return deleted_id

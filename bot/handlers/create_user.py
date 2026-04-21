@@ -40,6 +40,9 @@ async def process_age(message: types.Message, state: FSMContext):
         await message.answer("Возраст должен быть числом. Попробуйте ещё раз")
         return
     age = int(message.text)
+    if age < 1:
+        await message.answer("Возраст должен быть больше 1 года. Попробуйте ещё раз")
+        return
     await state.update_data(age=age)
     user_data = await state.get_data()
     payload = UserCreateDTO(**user_data)

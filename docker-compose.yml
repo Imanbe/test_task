@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:15-alpine
     container_name: test_task_db
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -22,6 +23,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: test_task_redis
+    restart: unless-stopped
     command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-redis_pass}
     volumes:
       - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
@@ -37,6 +39,7 @@ services:
       context: .
       dockerfile: api/Dockerfile
     container_name: test_task_api
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -62,6 +65,7 @@ services:
       context: .
       dockerfile: bot/Dockerfile
     container_name: test_task_bot
+    restart: unless-stopped
     depends_on:
       - api
     deploy:
